@@ -10,6 +10,7 @@ import scipy.stats as scist
 # Configurations
 dimen = 2
 
+np.random.seed(0)
 #-----------------------------------------------------------------------------------------------------------------------
 # Functions
 def gaussianFromEigen(mean_v, lamb, eig_vectors, data_num):
@@ -106,5 +107,31 @@ ax1.set_aspect('equal', 'box')
 ax1.legend(loc='upper left')
 plt.show()
 
+#-----------------------------------------------------------------------------------------------------------------------
+# 3)
+incorrPr0 = np.sum(incorrInd[:data_num])/data_num
+incorrPr1 = np.sum(incorrInd[data_num:])/data_num
+print('Conditional probability of incorrect classification of Class 0 = ',incorrPr0)
+print('Conditional probability of incorrect classification of Class 1 = ',incorrPr1)
+
+#-----------------------------------------------------------------------------------------------------------------------
+# 4)
+data_num = 400
+x10,_ = gaussianFromEigen(m0, lamb0, U0, data_num)
+
+x11A,_ = gaussianFromEigen(mA, lambA, UA, data_num)
+x11B,_ = gaussianFromEigen(mB, lambB, UB, data_num)
+mixGaussPi2 = np.random.uniform(0.0,1.0,data_num)
+x11 = np.concatenate((x11A[mixGaussPi2 <= pi_A,:],x11B[mixGaussPi2 > pi_A,:]),axis=0)
+
+x1x = np.concatenate((x10,x11),axis=0) # data
+t1x = np.concatenate((np.zeros(data_num),np.ones(data_num))) # label
+
+#-----------------------------------------------------------------------------------------------------------------------
+# 5)
+#-----------------------------------------------------------------------------------------------------------------------
+# 6)
+#-----------------------------------------------------------------------------------------------------------------------
+# 7)
 #-----------------------------------------------------------------------------------------------------------------------
 print('End')
