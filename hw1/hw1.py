@@ -123,18 +123,18 @@ def evalBCResult(pLabel, tLabel):
     return incorrInd
 
 # Visualize data and classification error (and decision boundary)
-# plt.figure(figsize=(12, 9))
-# # plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.5,c='g')
-# plt.scatter(x0[:,0],x0[:,1],s=5,label='Class 0')
-# plt.scatter(x1[:,0],x1[:,1],s=5,c='r',label='Class 1')
-# plt.scatter(x[incorrInd,0],x[incorrInd,1],s=16,facecolors='none',edgecolors='k',label='Incorrect Classification')
-# plt.title('MAP Classifier',fontsize=12)
-# plt.xlabel('Dimension 0',fontsize=10)
-# plt.ylabel('Dimension 1',fontsize=10)
-# ax1 = plt.gca()
-# ax1.set_aspect('equal', 'box')
-# ax1.legend(loc='upper left')
-#plt.show()
+def dispBCResult(x, class0Len, incorrInd, titleStr = None, plt_ax = None):
+    if (plt_ax == None):
+        plt_ax = plt.gca()
+    plt.scatter(x[:class0Len,0],x[:class0Len,1],s=5,label='Class 0')
+    plt.scatter(x[class0Len:,0],x[class0Len:,1],s=5,c='r',label='Class 1')
+    plt.scatter(x[incorrInd,0],x[incorrInd,1],s=16,facecolors='none',edgecolors='k',label='Incorrect Classification')
+    if (titleStr):
+        plt.title(titleStr,fontsize=12)
+    plt.xlabel('Dimension 0',fontsize=10)
+    plt.ylabel('Dimension 1',fontsize=10)
+    plt_ax.set_aspect('equal', 'box')
+    plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.4))
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 1) Generating data
@@ -173,16 +173,6 @@ x = np.concatenate((x0,x1),axis=0) # data
 t = np.concatenate((np.zeros(default_data_num),np.ones(default_data_num))) # label
 #-----------------------------------------------------------------------------------------------------------------------
 # 2)
-# xRange = np.arange(np.min(x[:,0]),np.max(x[:,0]),0.05)
-# yRange = np.arange(np.min(x[:,1]),np.max(x[:,1]),0.05)
-# xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
-# xGrid = np.reshape(xGrid, (xGrid.size,1))
-# yGrid = np.reshape(yGrid, (yGrid.size,1))
-# deciBoundX = np.column_stack((xGrid,yGrid))
-# classPr = binaryMAP(deciBoundX)
-# boundToler = 0.005;
-# boundInd = ( np.abs(classPr[:,1]-classPr[:,0]) < boundToler)
-
 classPr = binaryMAP(x)
 mapPredict = ( (classPr[:,1]-classPr[:,0]) >= 0 ).astype(int)
 incorrInd = np.squeeze(np.asarray((mapPredict.flatten() != t)))
@@ -193,7 +183,22 @@ print("MAP classifier:")
 incorrInd = evalBCResult(mapPredict, t)
 
 # Visualize data and classification error
+plt.figure()
+plt.get_current_fig_manager().window.wm_geometry("1400x660+20+20")
 
+ax0=plt.subplot2grid((1, 3), (0, 0), rowspan=1, colspan=1)
+dispBCResult(x, default_data_num, incorrInd, plt_ax = ax0, titleStr = 'MAP Classifier')
+
+# xRange = np.arange(np.min(x[:,0]),np.max(x[:,0]),0.05)
+# yRange = np.arange(np.min(x[:,1]),np.max(x[:,1]),0.05)
+# xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
+# xGrid = np.reshape(xGrid, (xGrid.size,1))
+# yGrid = np.reshape(yGrid, (yGrid.size,1))
+# deciBoundX = np.column_stack((xGrid,yGrid))
+# classPr = binaryMAP(deciBoundX)
+# boundToler = 0.005;
+# boundInd = ( np.abs(classPr[:,1]-classPr[:,0]) < boundToler)
+# plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.5,c='g')
 #-----------------------------------------------------------------------------------------------------------------------
 # 4)
 data_num = 200
@@ -230,6 +235,10 @@ print("data x and label t:")
 lrPredict = predictLRBC(GaussKerFeature(x, l),a)
 incorrInd = evalBCResult(lrPredict, t)
 
+# Visualize data and classification error (and decision boundary)
+ax1=plt.subplot2grid((1, 3), (0, 1), rowspan=1, colspan=1)
+dispBCResult(x, data_num, incorrInd, plt_ax = ax1, titleStr = 'Gaussian kernel LR Classifier')
+
 #-----------------------------------------------------------------------------------------------------------------------
 # 7)
 # Generate (non-kernelized) feature
@@ -243,20 +252,16 @@ print("(non-kernelized) Logistic regression classifier:")
 lrPredict = predictLRBC(Phi,w)
 incorrInd = evalBCResult(lrPredict, tTrain)
 
-# Visualize data and classification error (and decision boundary)
-# plt.figure(figsize=(12, 9))
-# # plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.5,c='g')
-# plt.scatter(xTrain[:data_num,0],xTrain[:data_num,1],s=5,label='Class 0')
-# plt.scatter(xTrain[data_num:,0],xTrain[data_num:,1],s=5,c='r',label='Class 1')
-# plt.scatter(xTrain[incorrInd,0],xTrain[incorrInd,1],s=16,facecolors='none',edgecolors='k',label='Incorrect Classification')
-# plt.title('Training logistic regression Classifier',fontsize=12)
-# plt.xlabel('Dimension 0',fontsize=10)
-# plt.ylabel('Dimension 1',fontsize=10)
-# ax1 = plt.gca()
-# ax1.set_aspect('equal', 'box')
-# ax1.legend(loc='upper left')
-# plt.show()
+# dispBCResult(xTrain, data_num, incorrInd, plt_ax = ax11,
+#              titleStr = '(Non-kernelized) Logistic regression Classifier')
 
 print("data x and label t:")
 lrPredict = predictLRBC(nonKer10Feature(x),w)
 incorrInd = evalBCResult(lrPredict, t)
+
+# Visualize data and classification error (and decision boundary)
+ax2=plt.subplot2grid((1, 3), (0, 2), rowspan=1, colspan=1)
+dispBCResult(x, default_data_num, incorrInd, plt_ax = ax2, titleStr = '(Non-kernelized) LR Classifier')
+
+plt.subplots_adjust(left=0.05, right=0.98, top=0.9, bottom=0.1)
+plt.show()
