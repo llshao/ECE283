@@ -9,7 +9,7 @@ import scipy.stats as scist
 import scipy.io as sio
 
 # Configurations
-dimen = 2
+dimen = 2 # data dimension
 
 # np.random.seed(0)
 #-----------------------------------------------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ def binaryMAP(data_in):
 
     return classPr
 
-# Construct 10-dimentional feature vector
+# Construct 10-dimentional feature vector Phi
 def nonKer10Feature(data_in):
     Phi = np.ones((10, data_in.shape[0]))
     Phi[1, :] = data_in[:, 0]
@@ -57,6 +57,17 @@ def nonKer10Feature(data_in):
     Phi[9, :] = np.power(data_in[:, 1], 3)
     return Phi
 
+# Generate Gaussian-kernel feature K
+def GaussKerFeature(data_in, l=1):
+    alpha = 0.5/(l**2)
+    dataLen = data_in.shape[0]
+    K = np.zeros((dataLen,dataLen))
+    for i in range(dataLen):
+        for j in range(dataLen):
+            x_diff = data_in[i,:] - data_in[j,:]
+            K[i,j] = np.exp(- alpha * (x_diff.dot(x_diff)))
+    return K
+
 # logistic sigmoid functio
 def sigmoid(z):
     return 1.0 / (1.0 + np.exp(-z))
@@ -66,22 +77,65 @@ def predictLRBC(Phi,w):
     y = sigmoid(w.dot(Phi))
     return (y > 0.5).astype(int)
 
-#  Training a (non-kernelized) logistic regression binary classifier
-def trainLRBC(Phi, tlabel, maxIter = 100, wToler = 2e-16):
+#  Training a logistic regression binary classifier
+def trainLRBC(Phi, tlabel, regular = None, maxIter = 100, wToler = 1e-15, wInit = None):
     featureN = Phi.shape[0] # dimension of features (must be rows of Phi)
-    w = np.zeros(featureN)
-    for i in range(maxIter):
-        y = sigmoid(w.dot(Phi))
-        R = np.diag(np.multiply(y,(1-y)))
-        H = Phi.dot(R).dot(Phi.T)
-        wStep = (np.linalg.inv(H)).dot(Phi).dot(y-tlabel)
-        w = w - wStep
-        stepSize = np.linalg.norm(wStep)
-        print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
-        if (stepSize < wToler):
-            print("Within tolerance: quit")
-            break
+
+    if (wInit == 'zeros'):
+        w = np.zeros(featureN)
+    else:
+        w = np.random.uniform(0.0,1.0,featureN)-0.5
+
+    if (regular == 'L2'):
+        print("L2-regularization applied")
+        for i in range(maxIter):
+            y = sigmoid(w.dot(Phi))
+            R = np.diag(np.multiply(y,(1-y)))
+            H = Phi.dot(R).dot(Phi.T) + np.eye(featureN)
+            wStep = (np.linalg.inv(H)).dot(Phi.dot(y-tlabel) + w)
+            w = w - wStep
+            stepSize = np.linalg.norm(wStep)
+            print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
+            if (stepSize < wToler):
+                print("Within tolerance: quit\n")
+                break
+    else:
+        for i in range(maxIter):
+            y = sigmoid(w.dot(Phi))
+            R = np.diag(np.multiply(y,(1-y)))
+            H = Phi.dot(R).dot(Phi.T)
+            wStep = (np.linalg.inv(H)).dot(Phi.dot(y-tlabel))
+            w = w - wStep
+            stepSize = np.linalg.norm(wStep)
+            print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
+            if (stepSize < wToler):
+                print("Within tolerance: quit\n")
+                break
     return w
+
+# Evaluate binary classification result
+def evalBCResult(pLabel, tLabel):
+    incorrInd = np.squeeze(np.asarray((pLabel.flatten() != tLabel)))
+    class0Len = np.where(tLabel == 0)[-1][-1] +1
+    incorrPr0 = np.sum(incorrInd[:class0Len])/class0Len
+    incorrPr1 = np.sum(incorrInd[class0Len:])/(incorrInd.shape[0]-class0Len)
+    print("Class 0 - error = {0:4.1f}%\nClass 1 - error = {1:4.1f}%\n".format(100*incorrPr0,100*incorrPr1))
+    return incorrInd
+
+# Visualize data and classification error (and decision boundary)
+# plt.figure(figsize=(12, 9))
+# # plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.5,c='g')
+# plt.scatter(x0[:,0],x0[:,1],s=5,label='Class 0')
+# plt.scatter(x1[:,0],x1[:,1],s=5,c='r',label='Class 1')
+# plt.scatter(x[incorrInd,0],x[incorrInd,1],s=16,facecolors='none',edgecolors='k',label='Incorrect Classification')
+# plt.title('MAP Classifier',fontsize=12)
+# plt.xlabel('Dimension 0',fontsize=10)
+# plt.ylabel('Dimension 1',fontsize=10)
+# ax1 = plt.gca()
+# ax1.set_aspect('equal', 'box')
+# ax1.legend(loc='upper left')
+#plt.show()
+
 #-----------------------------------------------------------------------------------------------------------------------
 # 1) Generating data
 default_data_num = 200
@@ -133,27 +187,12 @@ classPr = binaryMAP(x)
 mapPredict = ( (classPr[:,1]-classPr[:,0]) >= 0 ).astype(int)
 incorrInd = np.squeeze(np.asarray((mapPredict.flatten() != t)))
 
-# Visualize data and classification error (and decision boundary)
-# plt.figure(figsize=(12, 9))
-# # plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.5,c='g')
-# plt.scatter(x0[:,0],x0[:,1],s=5,label='Class 0')
-# plt.scatter(x1[:,0],x1[:,1],s=5,c='r',label='Class 1')
-# plt.scatter(x[incorrInd,0],x[incorrInd,1],s=16,facecolors='none',edgecolors='k',label='Incorrect Classification')
-# plt.title('MAP Classifier',fontsize=12)
-# plt.xlabel('Dimension 0',fontsize=10)
-# plt.ylabel('Dimension 1',fontsize=10)
-# ax1 = plt.gca()
-# ax1.set_aspect('equal', 'box')
-# ax1.legend(loc='upper left')
-#plt.show()
-
 #-----------------------------------------------------------------------------------------------------------------------
 # 3)
-incorrPr0 = np.sum(incorrInd[:default_data_num])/default_data_num
-incorrPr1 = np.sum(incorrInd[default_data_num:])/default_data_num
 print("MAP classifier:")
-print('Conditional probability of incorrect classification of Class 0 = ',incorrPr0)
-print('Conditional probability of incorrect classification of Class 1 = ',incorrPr1)
+incorrInd = evalBCResult(mapPredict, t)
+
+# Visualize data and classification error
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 4)
@@ -171,49 +210,38 @@ tTrain = np.concatenate((np.zeros(data_num),np.ones(data_num))) # label
 
 # sio.savemat('trainData',dict([('xTrain', xTrain), ('tTrain', tTrain)]))
 
-l = 0.05
-alpha = 0.5/(l**2)
-# alpha =1/l
+# Generate Gaussian-kernel feature
+l = 0.1 # kernel radius
+K = GaussKerFeature(xTrain, l)
 
-dataLen = xTrain.shape[0]
-K = np.zeros((dataLen,dataLen))
-for i in range(dataLen):
-    for j in range(dataLen):
-        x_diff = xTrain[i, :] - xTrain[j, :]
-        K[i, j] = np.exp(- alpha * (x_diff.dot(x_diff)))
+# Training LRBC (Gaussian kernel)
+a = trainLRBC(K, tTrain, regular='L2', wInit = 'zeros', maxIter = 20)
 
-print('min(K) = ',np.min(K),', max(K) = ',np.max(K))
-
-a = np.zeros(dataLen)
-# a = (np.random.uniform(0.0,1.0,dataLen)-0.5)*2
-
-for i in range(100):
-    y = sigmoid(a.dot(K))
-    R = np.diag(np.multiply(y,(1-y)))
-    H = K.dot(R).dot(K) + np.eye(dataLen)
-    aStep = (np.linalg.inv(H)).dot(K.dot(y-tTrain) +a)
-    a = a - aStep
-    stepSize = np.linalg.norm(aStep)
-    print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
-    if (stepSize < 9e-16):
-        print("Within tolerance: quit")
-        break
-
+print("Gaussian kernel logistic regression classifier:")
+lrPredict = predictLRBC(K,a)
+incorrInd = evalBCResult(lrPredict, tTrain)
 #-----------------------------------------------------------------------------------------------------------------------
 # 5)
+
 #-----------------------------------------------------------------------------------------------------------------------
 # 6)
+# Predict using LRBC
+print("data x and label t:")
+lrPredict = predictLRBC(GaussKerFeature(x, l),a)
+incorrInd = evalBCResult(lrPredict, t)
+
 #-----------------------------------------------------------------------------------------------------------------------
 # 7)
+# Generate (non-kernelized) feature
 Phi = nonKer10Feature(xTrain)
-w = trainLRBC(Phi, tTrain)
-lrPredict = predictLRBC(Phi,w)
-incorrInd = np.squeeze(np.asarray((lrPredict.flatten() != tTrain)))
 
-incorrPr0 = np.sum(incorrInd[:data_num])/data_num
-incorrPr1 = np.sum(incorrInd[data_num:])/data_num
-print('Training error of Class 0 = ',incorrPr0)
-print('Training error of Class 1 = ',incorrPr1)
+# Training LRBC (non-kernelized)
+w = trainLRBC(Phi, tTrain, wInit = 'zeros')
+
+print("(non-kernelized) Logistic regression classifier:")
+# Predict using LRBC (non-kernelized)
+lrPredict = predictLRBC(Phi,w)
+incorrInd = evalBCResult(lrPredict, tTrain)
 
 # Visualize data and classification error (and decision boundary)
 # plt.figure(figsize=(12, 9))
@@ -229,13 +257,6 @@ print('Training error of Class 1 = ',incorrPr1)
 # ax1.legend(loc='upper left')
 # plt.show()
 
-# lrPredict = predictLRBC(nonKer10Feature(x),w)
-# incorrInd = np.squeeze(np.asarray((lrPredict.flatten() != t)))
-# incorrPr0 = np.sum(incorrInd[:default_data_num])/default_data_num
-# incorrPr1 = np.sum(incorrInd[default_data_num:])/default_data_num
-# print("Logistic regression classifier:")
-# print('Prediction error of Class 0 = ',incorrPr0)
-# print('Prediction error of Class 1 = ',incorrPr1)
-
-#-----------------------------------------------------------------------------------------------------------------------
-print('End')
+print("data x and label t:")
+lrPredict = predictLRBC(nonKer10Feature(x),w)
+incorrInd = evalBCResult(lrPredict, t)
