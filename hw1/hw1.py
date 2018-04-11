@@ -11,7 +11,7 @@ import scipy.io as sio
 # Configurations
 dimen = 2
 
-np.random.seed(0)
+# np.random.seed(0)
 #-----------------------------------------------------------------------------------------------------------------------
 # Functions
 def gaussianFromEigen(mean_v, lamb, eig_vectors, data_num):
@@ -187,14 +187,17 @@ print('min(K) = ',np.min(K),', max(K) = ',np.max(K))
 a = np.zeros(dataLen)
 # a = (np.random.uniform(0.0,1.0,dataLen)-0.5)*2
 
-# for i in range(100):
-#     y = sigmoid(a.dot(K))
-#     R = np.diag(np.multiply(y,(1-y)))
-#     H = K.dot(R).dot(K)
-#     aStep = (np.linalg.inv(H)).dot(K).dot(y-tTrain)
-#     a = a - aStep
-#     stepSize = np.linalg.norm(aStep)
-#     print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
+for i in range(100):
+    y = sigmoid(a.dot(K))
+    R = np.diag(np.multiply(y,(1-y)))
+    H = K.dot(R).dot(K) + np.eye(dataLen)
+    aStep = (np.linalg.inv(H)).dot(K.dot(y-tTrain) +a)
+    a = a - aStep
+    stepSize = np.linalg.norm(aStep)
+    print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
+    if (stepSize < 9e-16):
+        print("Within tolerance: quit")
+        break
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 5)
