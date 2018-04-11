@@ -6,6 +6,7 @@ import numpy as np
 import numpy.matlib as matlib
 import matplotlib.pyplot as plt
 import scipy.stats as scist
+import scipy.io as sio
 
 # Configurations
 dimen = 2
@@ -168,9 +169,32 @@ x11 = x11[np.random.permutation(data_num),:] # Reshuffle the gaussian mixture da
 xTrain = np.concatenate((x10,x11),axis=0) # data
 tTrain = np.concatenate((np.zeros(data_num),np.ones(data_num))) # label
 
-# trainInd = list(range(0,100)) + list(range(data_num,data_num+100))
-# xTrain = x1x[trainInd,:]
-# tTrain = t1x[trainInd]
+# sio.savemat('trainData',dict([('xTrain', xTrain), ('tTrain', tTrain)]))
+
+l = 0.05
+alpha = 0.5/(l**2)
+# alpha =1/l
+
+dataLen = xTrain.shape[0]
+K = np.zeros((dataLen,dataLen))
+for i in range(dataLen):
+    for j in range(dataLen):
+        x_diff = xTrain[i, :] - xTrain[j, :]
+        K[i, j] = np.exp(- alpha * (x_diff.dot(x_diff)))
+
+print('min(K) = ',np.min(K),', max(K) = ',np.max(K))
+
+a = np.zeros(dataLen)
+# a = (np.random.uniform(0.0,1.0,dataLen)-0.5)*2
+
+# for i in range(100):
+#     y = sigmoid(a.dot(K))
+#     R = np.diag(np.multiply(y,(1-y)))
+#     H = K.dot(R).dot(K)
+#     aStep = (np.linalg.inv(H)).dot(K).dot(y-tTrain)
+#     a = a - aStep
+#     stepSize = np.linalg.norm(aStep)
+#     print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 5)
@@ -202,13 +226,13 @@ print('Training error of Class 1 = ',incorrPr1)
 # ax1.legend(loc='upper left')
 # plt.show()
 
-lrPredict = predictLRBC(nonKer10Feature(x),w)
-incorrInd = np.squeeze(np.asarray((lrPredict.flatten() != t)))
-incorrPr0 = np.sum(incorrInd[:default_data_num])/default_data_num
-incorrPr1 = np.sum(incorrInd[default_data_num:])/default_data_num
-print("Logistic regression classifier:")
-print('Prediction error of Class 0 = ',incorrPr0)
-print('Prediction error of Class 1 = ',incorrPr1)
+# lrPredict = predictLRBC(nonKer10Feature(x),w)
+# incorrInd = np.squeeze(np.asarray((lrPredict.flatten() != t)))
+# incorrPr0 = np.sum(incorrInd[:default_data_num])/default_data_num
+# incorrPr1 = np.sum(incorrInd[default_data_num:])/default_data_num
+# print("Logistic regression classifier:")
+# print('Prediction error of Class 0 = ',incorrPr0)
+# print('Prediction error of Class 1 = ',incorrPr1)
 
 #-----------------------------------------------------------------------------------------------------------------------
 print('End')

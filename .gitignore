@@ -1,2 +1,5 @@
 *.pdf
 .idea/
+*.m
+*.asv
+*.mat
