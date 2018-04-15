@@ -180,7 +180,7 @@ t = np.concatenate((np.zeros(default_data_num),np.ones(default_data_num))) # lab
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 4)
-data_num = 400
+data_num = 200
 x10,_ = gaussianFromEigen(m0, lamb0, U0, data_num)
 
 x11A,_ = gaussianFromEigen(mA, lambA, UA, data_num)
@@ -194,7 +194,7 @@ tTrain = np.concatenate((np.zeros(data_num),np.ones(data_num))) # label
 
 print("Gaussian kernel logistic regression classifier:")
 # Generate Gaussian-kernel feature
-l = 0.01 # kernel radius
+l = 0.1 # kernel radius
 
 batchSize = 200
 batchNum = int(data_num/batchSize)
@@ -236,47 +236,47 @@ for i in range(batchNum):
 incorrInd = evalBCResult(lrPredict, t)
 
 #-----------------------------------------------------------------------------------------------------------------------
-# Visualize data and classification error (and decision boundary)
-plt.figure()
-plt.get_current_fig_manager().window.wm_geometry("1440x800+20+20")
-
-ax1=plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
-dispBCResult(x, default_data_num, incorrInd, plt_ax = ax1, titleStr = 'Gaussian kernel LR Classifier')
-
-# Decision boundary for LR
-ax3=plt.subplot2grid((1, 2), (0, 1), rowspan=1, colspan=1)
-
-xRange = np.linspace(np.min(x[:,0]),np.max(x[:,0]),200)
-yRange = np.linspace(np.min(x[:,1]),np.max(x[:,1]),200)
-
-xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
-xGrid = np.reshape(xGrid, (xGrid.size,1))
-yGrid = np.reshape(yGrid, (yGrid.size,1))
-deciBoundX = np.column_stack((xGrid,yGrid))
-
-dataLen = deciBoundX.shape[0]
-
-bRandInd = np.random.permutation(dataLen)
-deciBoundX = deciBoundX[bRandInd,:]
-
-classPr = np.zeros(dataLen)
-batchNum = int(dataLen/(batchSize*2))
-for i in range(batchNum):
-    batchInd = (i*batchSize*2) + np.arange(batchSize*2)
-    temp = deciBoundX[batchInd, :]
-    classPr[batchInd] = predictLRBC(GaussKerFeature(temp, l), a)
-
-plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=0.2,c='g',label='Class 1 Boundary')
-plt.scatter(deciBoundX[(classPr == 0), 0], deciBoundX[(classPr == 0), 1], s=0.2, c='y', label='Class 0 Boundary')
-
-plt.xlabel('Dimension 0',fontsize=10)
-plt.ylabel('Dimension 1',fontsize=10)
-
-plt.scatter(x[default_data_num:,0],x[default_data_num:,1],s=5,c='r',label='Class 1')
-plt.scatter(x[:default_data_num,0],x[:default_data_num,1],s=5,label='Class 0')
-
-plt_ax = plt.gca()
-plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
-plt_ax.set_aspect('equal', 'box')
-plt.subplots_adjust(left=0.05, right=0.98, top=0.9, bottom=0.1)
-plt.show()
+# # Visualize data and classification error (and decision boundary)
+# plt.figure()
+# plt.get_current_fig_manager().window.wm_geometry("1440x800+20+20")
+#
+# ax1=plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
+# dispBCResult(x, default_data_num, incorrInd, plt_ax = ax1, titleStr = 'Gaussian kernel LR Classifier')
+#
+# # Decision boundary for LR
+# ax3=plt.subplot2grid((1, 2), (0, 1), rowspan=1, colspan=1)
+#
+# xRange = np.linspace(np.min(x[:,0]),np.max(x[:,0]),200)
+# yRange = np.linspace(np.min(x[:,1]),np.max(x[:,1]),200)
+#
+# xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
+# xGrid = np.reshape(xGrid, (xGrid.size,1))
+# yGrid = np.reshape(yGrid, (yGrid.size,1))
+# deciBoundX = np.column_stack((xGrid,yGrid))
+#
+# dataLen = deciBoundX.shape[0]
+#
+# bRandInd = np.random.permutation(dataLen)
+# deciBoundX = deciBoundX[bRandInd,:]
+#
+# classPr = np.zeros(dataLen)
+# batchNum = int(dataLen/(batchSize*2))
+# for i in range(batchNum):
+#     batchInd = (i*batchSize*2) + np.arange(batchSize*2)
+#     temp = deciBoundX[batchInd, :]
+#     classPr[batchInd] = predictLRBC(GaussKerFeature(temp, l), a)
+#
+# plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=0.2,c='g',label='Class 1 Boundary')
+# plt.scatter(deciBoundX[(classPr == 0), 0], deciBoundX[(classPr == 0), 1], s=0.2, c='y', label='Class 0 Boundary')
+#
+# plt.xlabel('Dimension 0',fontsize=10)
+# plt.ylabel('Dimension 1',fontsize=10)
+#
+# plt.scatter(x[default_data_num:,0],x[default_data_num:,1],s=5,c='r',label='Class 1')
+# plt.scatter(x[:default_data_num,0],x[:default_data_num,1],s=5,label='Class 0')
+#
+# plt_ax = plt.gca()
+# plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
+# plt_ax.set_aspect('equal', 'box')
+# plt.subplots_adjust(left=0.05, right=0.98, top=0.9, bottom=0.1)
+# plt.show()
