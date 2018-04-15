@@ -5,3 +5,7 @@
 *.mat
 *.png
 *.txt
+*.aux
+*.log
+*.synctex.gz
+*.tex
