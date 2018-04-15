@@ -11,7 +11,7 @@ import scipy.io as sio
 # Configurations
 dimen = 2 # data dimension
 
-# np.random.seed(0)
+np.random.seed(0)
 #-----------------------------------------------------------------------------------------------------------------------
 # Functions
 def gaussianFromEigen(mean_v, lamb, eig_vectors, data_num):
@@ -40,8 +40,20 @@ def binaryMAP(data_in):
         Pr_t1 = pi_A * Pr_t1A + pi_B * Pr_t1B
 
         classPr = np.append(classPr,np.concatenate((Pr_t0,Pr_t1),axis=1),axis=0)
-
     return classPr
+
+# # Polynomial coefficents of Gaussian random variable
+# def getGaussCoeff(x2, m, Cov, beta=1):
+#     logZ = np.log((2 * np.pi) * np.power(np.linalg.det(Cov), 0.5))
+#     P = np.linalg.inv(Cov)
+#     Pminor = P[1,0]+P[0,1]
+#     polyCoeff = np.array([
+#         -0.5*P[0,0],
+#         -0.5*( Pminor*x2 -2*m[0]*P[0,0] -m[1]*Pminor ),
+#         -0.5 * (P[0, 0] * (m[0] ** 2) - Pminor * (x2 - m[1]) * m[0] + P[1, 1] * ((x2 - m[1]) ** 2)) - logZ + np.log(
+#             beta)
+#     ])
+#     return polyCoeff
 
 # Construct 10-dimentional feature vector Phi
 def nonKer10Feature(data_in):
@@ -83,16 +95,22 @@ def trainLRBC(Phi, tlabel, regular = None, maxIter = 100, wToler = 1e-15, wInit 
 
     if (wInit == 'zeros'):
         w = np.zeros(featureN)
-    else:
+    elif (wInit == 'random'):
         w = np.random.uniform(0.0,1.0,featureN)-0.5
+    else:
+        if wInit is not None:
+            w = wInit
+        else:
+            print("w must be initialized")
+            return None
 
     if (regular == 'L2'):
         print("L2-regularization applied")
         for i in range(maxIter):
             y = sigmoid(w.dot(Phi))
             R = np.diag(np.multiply(y,(1-y)))
-            H = Phi.dot(R).dot(Phi.T) + np.eye(featureN)
-            wStep = (np.linalg.inv(H)).dot(Phi.dot(y-tlabel) + w)
+            H = Phi.dot(R).dot(Phi.T) + 0.5*np.eye(featureN)
+            wStep = (np.linalg.inv(H)).dot(Phi.dot(y-tlabel) + 0.5*w)
             w = w - wStep
             stepSize = np.linalg.norm(wStep)
             print("Iter {0:3d}:      step {1:21.20f}".format(i,stepSize))
@@ -116,9 +134,10 @@ def trainLRBC(Phi, tlabel, regular = None, maxIter = 100, wToler = 1e-15, wInit 
 # Evaluate binary classification result
 def evalBCResult(pLabel, tLabel):
     incorrInd = np.squeeze(np.asarray((pLabel.flatten() != tLabel)))
-    class0Len = np.where(tLabel == 0)[-1][-1] +1
-    incorrPr0 = np.sum(incorrInd[:class0Len])/class0Len
-    incorrPr1 = np.sum(incorrInd[class0Len:])/(incorrInd.shape[0]-class0Len)
+    class0Ind = (tLabel == 0)
+    class1Ind = (tLabel == 1)
+    incorrPr0 = np.sum(incorrInd[class0Ind])/(class0Ind.shape[0])
+    incorrPr1 = np.sum(incorrInd[class1Ind])/(class1Ind.shape[0])
     print("Class 0 - error = {0:4.1f}%\nClass 1 - error = {1:4.1f}%\n".format(100*incorrPr0,100*incorrPr1))
     return incorrInd
 
@@ -151,13 +170,13 @@ x0, C0 = gaussianFromEigen(m0, lamb0, U0, default_data_num)
 # Class 1
 thetaA = -3*(np.pi)/4
 pi_A = 1/3
-mA = [-2,1]
+mA = np.array([-2,1])
 lambA = [2,1/4]
 UA = np.mat([[np.cos(thetaA), np.sin(thetaA)],[-np.sin(thetaA), np.cos(thetaA)]]).T
 
 thetaB = (np.pi)/4
 pi_B = 2/3
-mB = [3,2]
+mB = np.array([3,2])
 lambB = [3,1]
 UB = np.mat([[np.cos(thetaB), np.sin(thetaB)],[-np.sin(thetaB), np.cos(thetaB)]]).T
 
@@ -178,6 +197,24 @@ mapPredict = ( (classPr[:,1]-classPr[:,0]) >= 0 ).astype(int)
 incorrInd = np.squeeze(np.asarray((mapPredict.flatten() != t)))
 
 #-----------------------------------------------------------------------------------------------------------------------
+# Decision boundary (incorrect)
+# x2 = 1.25
+# f0 = getGaussCoeff(x2, m0, C0)
+# f1A = getGaussCoeff(x2, mA, C1A, pi_A)
+# f1B = getGaussCoeff(x2, mB, C1B, pi_B)
+# fbound = f1A + f1B - f0
+
+# print('Test2 = ',f1A[2])
+# f1A[2] -= np.log(0.11)
+# print('Polynomial = ',f1A)
+# fbound = f1A
+
+# xRes = np.roots(fbound)
+# print('roots: ',xRes)
+# classPr = binaryMAP([xRes[0],x2])
+# Pr_t0 = getGaussianLikelihood([xRes[0],x2], mA, C1A)
+# print('Probability = ',Pr_t0*pi_A)
+#-----------------------------------------------------------------------------------------------------------------------
 # 3)
 print("MAP classifier:")
 incorrInd = evalBCResult(mapPredict, t)
@@ -196,9 +233,10 @@ dispBCResult(x, default_data_num, incorrInd, plt_ax = ax0, titleStr = 'MAP Class
 # yGrid = np.reshape(yGrid, (yGrid.size,1))
 # deciBoundX = np.column_stack((xGrid,yGrid))
 # classPr = binaryMAP(deciBoundX)
-# boundToler = 0.005;
-# boundInd = ( np.abs(classPr[:,1]-classPr[:,0]) < boundToler)
-# plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.5,c='g')
+# # boundToler = 0.005;
+# # boundInd = ( np.abs(classPr[:,1]-classPr[:,0]) < boundToler)
+# boundInd = ((classPr[:,1]-classPr[:,0]) >= 0)
+# plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.01,c='g')
 #-----------------------------------------------------------------------------------------------------------------------
 # 4)
 data_num = 200
@@ -215,30 +253,70 @@ tTrain = np.concatenate((np.zeros(data_num),np.ones(data_num))) # label
 
 # sio.savemat('trainData',dict([('xTrain', xTrain), ('tTrain', tTrain)]))
 
+print("Gaussian kernel logistic regression classifier:")
 # Generate Gaussian-kernel feature
 l = 0.1 # kernel radius
-K = GaussKerFeature(xTrain, l)
 
-# Training LRBC (Gaussian kernel)
-a = trainLRBC(K, tTrain, regular='L2', wInit = 'zeros', maxIter = 20)
+batchSize = 200
+batchNum = int(data_num/batchSize)
 
-print("Gaussian kernel logistic regression classifier:")
-lrPredict = predictLRBC(K,a)
+dataLen = tTrain.shape[0]
+lrPredict = np.zeros(dataLen)
+for i in range(batchNum):
+    print("Batch {0:2d}".format(i))
+    batchInd = (i*batchSize) + np.arange(batchSize)
+    batchInd = np.concatenate((batchInd,int(0.5*dataLen) +batchInd))
+    K = GaussKerFeature(xTrain[batchInd,:], l)
+
+    # Training LRBC (Gaussian kernel)
+    if (i==0):
+        a = trainLRBC(K, tTrain[batchInd], regular = 'L2', wInit = 'zeros', maxIter = 20)
+    else:
+        a = trainLRBC(K, tTrain[batchInd], regular = 'L2', wInit = a, maxIter=20)
+    # Evaluate training
+    lrPredict[batchInd] = predictLRBC(K,a)
+    evalBCResult(lrPredict[batchInd], tTrain[batchInd])
+
+print("Training completed")
 incorrInd = evalBCResult(lrPredict, tTrain)
-#-----------------------------------------------------------------------------------------------------------------------
-# 5)
 
 #-----------------------------------------------------------------------------------------------------------------------
-# 6)
+# 5) and 6)
 # Predict using LRBC
 print("data x and label t:")
-lrPredict = predictLRBC(GaussKerFeature(x, l),a)
+
+batchNum = int(default_data_num/batchSize)
+
+lrPredict = np.zeros(t.shape[0])
+
+for i in range(batchNum):
+    print("Batch {0:2d}".format(i))
+    batchInd = (i*batchSize*2) + np.arange(batchSize*2)
+    lrPredict[batchInd] = predictLRBC(GaussKerFeature(x[batchInd,:], l), a)
+
 incorrInd = evalBCResult(lrPredict, t)
 
 # Visualize data and classification error (and decision boundary)
 ax1=plt.subplot2grid((1, 3), (0, 1), rowspan=1, colspan=1)
-dispBCResult(x, data_num, incorrInd, plt_ax = ax1, titleStr = 'Gaussian kernel LR Classifier')
+dispBCResult(x, default_data_num, incorrInd, plt_ax = ax1, titleStr = 'Gaussian kernel LR Classifier')
 
+xRange = np.linspace(np.min(x[:,0]),np.max(x[:,0]),40)
+yRange = np.linspace(np.min(x[:,1]),np.max(x[:,1]),40)
+xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
+xGrid = np.reshape(xGrid, (xGrid.size,1))
+yGrid = np.reshape(yGrid, (yGrid.size,1))
+deciBoundX = np.column_stack((xGrid,yGrid))
+
+dataLen = deciBoundX.shape[0]
+classPr = np.zeros(dataLen)
+batchNum = int(dataLen/(batchSize*2))
+for i in range(batchNum):
+    batchInd = (i*batchSize*2) + np.arange(batchSize*2)
+    # classPr[batchInd] = sigmoid(a.dot(GaussKerFeature(deciBoundX[batchInd,:], l)))
+    classPr[batchInd] = predictLRBC(GaussKerFeature(deciBoundX[batchInd, :], l), a)
+boundInd = (classPr == 0)
+# boundInd = (classPr > 0.5)
+plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.1,c='g')
 #-----------------------------------------------------------------------------------------------------------------------
 # 7)
 # Generate (non-kernelized) feature
