@@ -42,19 +42,6 @@ def binaryMAP(data_in):
         classPr = np.append(classPr,np.concatenate((Pr_t0,Pr_t1),axis=1),axis=0)
     return classPr
 
-# # Polynomial coefficents of Gaussian random variable
-# def getGaussCoeff(x2, m, Cov, beta=1):
-#     logZ = np.log((2 * np.pi) * np.power(np.linalg.det(Cov), 0.5))
-#     P = np.linalg.inv(Cov)
-#     Pminor = P[1,0]+P[0,1]
-#     polyCoeff = np.array([
-#         -0.5*P[0,0],
-#         -0.5*( Pminor*x2 -2*m[0]*P[0,0] -m[1]*Pminor ),
-#         -0.5 * (P[0, 0] * (m[0] ** 2) - Pminor * (x2 - m[1]) * m[0] + P[1, 1] * ((x2 - m[1]) ** 2)) - logZ + np.log(
-#             beta)
-#     ])
-#     return polyCoeff
-
 # Construct 10-dimentional feature vector Phi
 def nonKer10Feature(data_in):
     Phi = np.ones((10, data_in.shape[0]))
@@ -153,7 +140,7 @@ def dispBCResult(x, class0Len, incorrInd, titleStr = None, plt_ax = None):
     plt.xlabel('Dimension 0',fontsize=10)
     plt.ylabel('Dimension 1',fontsize=10)
     plt_ax.set_aspect('equal', 'box')
-    plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.4))
+    plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 1) Generating data
@@ -190,54 +177,7 @@ print('C0 =\n',C0, '\n C1A =\n',C1A,'\n C1B =\n',C1B)
 
 x = np.concatenate((x0,x1),axis=0) # data
 t = np.concatenate((np.zeros(default_data_num),np.ones(default_data_num))) # label
-#-----------------------------------------------------------------------------------------------------------------------
-# 2)
-classPr = binaryMAP(x)
-mapPredict = ( (classPr[:,1]-classPr[:,0]) >= 0 ).astype(int)
-incorrInd = np.squeeze(np.asarray((mapPredict.flatten() != t)))
 
-#-----------------------------------------------------------------------------------------------------------------------
-# Decision boundary (incorrect)
-# x2 = 1.25
-# f0 = getGaussCoeff(x2, m0, C0)
-# f1A = getGaussCoeff(x2, mA, C1A, pi_A)
-# f1B = getGaussCoeff(x2, mB, C1B, pi_B)
-# fbound = f1A + f1B - f0
-
-# print('Test2 = ',f1A[2])
-# f1A[2] -= np.log(0.11)
-# print('Polynomial = ',f1A)
-# fbound = f1A
-
-# xRes = np.roots(fbound)
-# print('roots: ',xRes)
-# classPr = binaryMAP([xRes[0],x2])
-# Pr_t0 = getGaussianLikelihood([xRes[0],x2], mA, C1A)
-# print('Probability = ',Pr_t0*pi_A)
-#-----------------------------------------------------------------------------------------------------------------------
-# 3)
-print("MAP classifier:")
-incorrInd = evalBCResult(mapPredict, t)
-
-# Visualize data and classification error
-plt.figure()
-plt.get_current_fig_manager().window.wm_geometry("1400x660+20+20")
-
-ax0=plt.subplot2grid((1, 3), (0, 0), rowspan=1, colspan=1)
-dispBCResult(x, default_data_num, incorrInd, plt_ax = ax0, titleStr = 'MAP Classifier')
-
-xRange = np.arange(np.min(x[:,0]),np.max(x[:,0]),0.05)
-yRange = np.arange(np.min(x[:,1]),np.max(x[:,1]),0.05)
-xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
-xGrid = np.reshape(xGrid, (xGrid.size,1))
-yGrid = np.reshape(yGrid, (yGrid.size,1))
-deciBoundX = np.column_stack((xGrid,yGrid))
-classPr = binaryMAP(deciBoundX)
-# boundToler = 0.005;
-# boundInd = ( np.abs(classPr[:,1]-classPr[:,0]) < boundToler)
-boundInd = ((classPr[:,1]-classPr[:,0]) >= 0)
-plt.scatter(xGrid[boundInd],yGrid[boundInd],s=0.01,c='g',label='Class 1 Boundary')
-(plt.gca()).legend(loc='upper left',bbox_to_anchor=(0.4, 1.5))
 #-----------------------------------------------------------------------------------------------------------------------
 # 4)
 data_num = 400
@@ -252,11 +192,9 @@ x11 = x11[np.random.permutation(data_num),:] # Reshuffle the gaussian mixture da
 xTrain = np.concatenate((x10,x11),axis=0) # data
 tTrain = np.concatenate((np.zeros(data_num),np.ones(data_num))) # label
 
-# sio.savemat('trainData',dict([('xTrain', xTrain), ('tTrain', tTrain)]))
-
 print("Gaussian kernel logistic regression classifier:")
 # Generate Gaussian-kernel feature
-l = 0.1 # kernel radius
+l = 0.01 # kernel radius
 
 batchSize = 200
 batchNum = int(data_num/batchSize)
@@ -297,83 +235,48 @@ for i in range(batchNum):
 
 incorrInd = evalBCResult(lrPredict, t)
 
+#-----------------------------------------------------------------------------------------------------------------------
 # Visualize data and classification error (and decision boundary)
-ax1=plt.subplot2grid((1, 3), (0, 1), rowspan=1, colspan=1)
+plt.figure()
+plt.get_current_fig_manager().window.wm_geometry("1440x800+20+20")
+
+ax1=plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
 dispBCResult(x, default_data_num, incorrInd, plt_ax = ax1, titleStr = 'Gaussian kernel LR Classifier')
 
-#-----------------------------------------------------------------------------------------------------------------------
-# 7)
-# Generate (non-kernelized) feature
-Phi = nonKer10Feature(xTrain)
+# Decision boundary for LR
+ax3=plt.subplot2grid((1, 2), (0, 1), rowspan=1, colspan=1)
 
-# Training LRBC (non-kernelized)
-w = trainLRBC(Phi, tTrain, wInit = 'zeros')
+xRange = np.linspace(np.min(x[:,0]),np.max(x[:,0]),200)
+yRange = np.linspace(np.min(x[:,1]),np.max(x[:,1]),200)
 
-print("(non-kernelized) Logistic regression classifier:")
-# Predict using LRBC (non-kernelized)
-lrPredict = predictLRBC(Phi,w)
-incorrInd = evalBCResult(lrPredict, tTrain)
-
-# dispBCResult(xTrain, data_num, incorrInd, plt_ax = ax11,
-#              titleStr = '(Non-kernelized) Logistic regression Classifier')
-
-print("data x and label t:")
-lrPredict = predictLRBC(nonKer10Feature(x),w)
-incorrInd = evalBCResult(lrPredict, t)
-
-# Visualize data and classification error (and decision boundary)
-ax2=plt.subplot2grid((1, 3), (0, 2), rowspan=1, colspan=1)
-dispBCResult(x, default_data_num, incorrInd, plt_ax = ax2, titleStr = '(Non-kernelized) LR Classifier')
-
-xRange = np.arange(np.min(x[:,0]),np.max(x[:,0]),0.05)
-yRange = np.arange(np.min(x[:,1]),np.max(x[:,1]),0.05)
 xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
 xGrid = np.reshape(xGrid, (xGrid.size,1))
 yGrid = np.reshape(yGrid, (yGrid.size,1))
 deciBoundX = np.column_stack((xGrid,yGrid))
-classPr = predictLRBC(nonKer10Feature(deciBoundX),w)
-plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=0.01,c='g',label='Class 1 Boundary')
-(plt.gca()).legend(loc='upper left',bbox_to_anchor=(0.4, 1.5))
 
+dataLen = deciBoundX.shape[0]
+
+bRandInd = np.random.permutation(dataLen)
+deciBoundX = deciBoundX[bRandInd,:]
+
+classPr = np.zeros(dataLen)
+batchNum = int(dataLen/(batchSize*2))
+for i in range(batchNum):
+    batchInd = (i*batchSize*2) + np.arange(batchSize*2)
+    temp = deciBoundX[batchInd, :]
+    classPr[batchInd] = predictLRBC(GaussKerFeature(temp, l), a)
+
+plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=0.2,c='g',label='Class 1 Boundary')
+plt.scatter(deciBoundX[(classPr == 0), 0], deciBoundX[(classPr == 0), 1], s=0.2, c='y', label='Class 0 Boundary')
+
+plt.xlabel('Dimension 0',fontsize=10)
+plt.ylabel('Dimension 1',fontsize=10)
+
+plt.scatter(x[default_data_num:,0],x[default_data_num:,1],s=5,c='r',label='Class 1')
+plt.scatter(x[:default_data_num,0],x[:default_data_num,1],s=5,label='Class 0')
+
+plt_ax = plt.gca()
+plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
+plt_ax.set_aspect('equal', 'box')
 plt.subplots_adjust(left=0.05, right=0.98, top=0.9, bottom=0.1)
 plt.show()
-
-#-----------------------------------------------------------------------------------------------------------------------
-# Decision boundary for LR
-# plt.figure()
-# plt.get_current_fig_manager().window.wm_geometry("1400x660+20+20")
-#
-# ax3=plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
-#
-# boundInd = (lrPredict == 1)
-# plt.scatter(x[boundInd,0],x[boundInd,1],s=2,c='g')
-#
-# xRange = np.linspace(np.min(x[:,0]),np.max(x[:,0]),100)
-# yRange = np.linspace(np.min(x[:,1]),np.max(x[:,1]),100)
-#
-# xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
-# xGrid = np.reshape(xGrid, (xGrid.size,1))
-# yGrid = np.reshape(yGrid, (yGrid.size,1))
-# deciBoundX = np.column_stack((xGrid,yGrid))
-
-# xGrid = np.random.uniform(np.min(x[:,0]),np.max(x[:,0]),40000)
-# yGrid = np.random.uniform(np.min(x[:,1]),np.max(x[:,1]),40000)
-# deciBoundX = np.column_stack((xGrid,yGrid))
-
-# deciBoundX = x
-
-# dataLen = deciBoundX.shape[0]
-
-# bRandInd = np.random.permutation(dataLen)
-# deciBoundX = deciBoundX[bRandInd,:]
-
-# classPr = np.zeros(dataLen)
-# batchNum = int(dataLen/(batchSize*2))
-# for i in range(batchNum):
-#     batchInd = (i*batchSize*2) + np.arange(batchSize*2)
-#     temp = deciBoundX[batchInd, :]
-#     classPr[batchInd] = predictLRBC(GaussKerFeature(temp, l), a)
-# plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=1,c='g')
-# plt.scatter(deciBoundX[(classPr == 0),0],deciBoundX[(classPr == 0),1],s=2,c='y')
-
-# plt.show()
