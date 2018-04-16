@@ -128,19 +128,19 @@ def evalBCResult(pLabel, tLabel):
     print("Class 0 - error = {0:4.1f}%\nClass 1 - error = {1:4.1f}%\n".format(100*incorrPr0,100*incorrPr1))
     return incorrInd
 
-# Visualize data and classification error (and decision boundary)
-def dispBCResult(x, class0Len, incorrInd, titleStr = None, plt_ax = None):
-    if (plt_ax == None):
-        plt_ax = plt.gca()
-    plt.scatter(x[:class0Len,0],x[:class0Len,1],s=5,label='Class 0')
-    plt.scatter(x[class0Len:,0],x[class0Len:,1],s=5,c='r',label='Class 1')
-    plt.scatter(x[incorrInd,0],x[incorrInd,1],s=16,facecolors='none',edgecolors='k',label='Incorrect Classification')
-    if (titleStr):
-        plt.title(titleStr,fontsize=12)
-    plt.xlabel('Dimension 0',fontsize=10)
-    plt.ylabel('Dimension 1',fontsize=10)
-    plt_ax.set_aspect('equal', 'box')
-    plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
+# # Visualize data and classification error (and decision boundary)
+# def dispBCResult(x, class0Len, incorrInd, titleStr = None, plt_ax = None):
+#     if (plt_ax == None):
+#         plt_ax = plt.gca()
+#     plt.scatter(x[:class0Len,0],x[:class0Len,1],s=5,label='Class 0')
+#     plt.scatter(x[class0Len:,0],x[class0Len:,1],s=5,c='r',label='Class 1')
+#     plt.scatter(x[incorrInd,0],x[incorrInd,1],s=16,facecolors='none',edgecolors='k',label='Incorrect Classification')
+#     if (titleStr):
+#         plt.title(titleStr,fontsize=12)
+#     plt.xlabel('Dimension 0',fontsize=10)
+#     plt.ylabel('Dimension 1',fontsize=10)
+#     plt_ax.set_aspect('equal', 'box')
+#     plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 1) Generating data
@@ -180,7 +180,7 @@ t = np.concatenate((np.zeros(default_data_num),np.ones(default_data_num))) # lab
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 4)
-data_num = 200
+data_num = 400
 x10,_ = gaussianFromEigen(m0, lamb0, U0, data_num)
 
 x11A,_ = gaussianFromEigen(mA, lambA, UA, data_num)
@@ -236,47 +236,96 @@ for i in range(batchNum):
 incorrInd = evalBCResult(lrPredict, t)
 
 #-----------------------------------------------------------------------------------------------------------------------
-# # Visualize data and classification error (and decision boundary)
-# plt.figure()
-# plt.get_current_fig_manager().window.wm_geometry("1440x800+20+20")
-#
-# ax1=plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
+# 7)
+# Generate (non-kernelized) feature
+Phi = nonKer10Feature(xTrain)
+
+# Training LRBC (non-kernelized)
+w = trainLRBC(Phi, tTrain, wInit = 'zeros')
+
+print("(non-kernelized) Logistic regression classifier:")
+# Predict using LRBC (non-kernelized)
+lrPredict = predictLRBC(Phi,w)
+incorrInd = evalBCResult(lrPredict, tTrain)
+
+# dispBCResult(xTrain, data_num, incorrInd, plt_ax = ax11,
+#              titleStr = '(Non-kernelized) Logistic regression Classifier')
+
+print("data x and label t:")
+lrPredict = predictLRBC(nonKer10Feature(x),w)
+incorrInd = evalBCResult(lrPredict, t)
+
+#-----------------------------------------------------------------------------------------------------------------------
+# Visualize data and classification error (and decision boundary)
+plt.figure()
+plt.get_current_fig_manager().window.wm_geometry("1440x800+20+20")
+
+ax2=plt.subplot2grid((1, 2), (0, 1), rowspan=1, colspan=1)
+
+class0Ind = (tTrain == 0)
+class1Ind = (tTrain == 1)
+plt.scatter(xTrain[class0Ind,0],xTrain[class0Ind,1],s=5,label='Class 0')
+plt.scatter(xTrain[class1Ind,0],xTrain[class1Ind,1],s=5,c='r',label='Class 1')
+plt.title('(Non-kernelized) LR Classifier',fontsize=12)
+plt.xlabel('Dimension 0',fontsize=10)
+plt.ylabel('Dimension 1',fontsize=10)
+
+xRange = np.arange(np.min(xTrain[:,0]),np.max(xTrain[:,0]),0.05)
+yRange = np.arange(np.min(xTrain[:,1]),np.max(xTrain[:,1]),0.05)
+xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
+xGrid = np.reshape(xGrid, (xGrid.size,1))
+yGrid = np.reshape(yGrid, (yGrid.size,1))
+deciBoundX = np.column_stack((xGrid,yGrid))
+classPr = predictLRBC(nonKer10Feature(deciBoundX),w)
+plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=0.01,c='g',label='Class 1 Boundary')
+(plt.gca()).legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
+
+plt_ax = plt.gca()
+plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
+plt_ax.set_aspect('equal', 'box')
+
+#-----------------------------------------------------------------------------------------------------------------------
+ax1=plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
 # dispBCResult(x, default_data_num, incorrInd, plt_ax = ax1, titleStr = 'Gaussian kernel LR Classifier')
-#
-# # Decision boundary for LR
-# ax3=plt.subplot2grid((1, 2), (0, 1), rowspan=1, colspan=1)
-#
-# xRange = np.linspace(np.min(x[:,0]),np.max(x[:,0]),200)
-# yRange = np.linspace(np.min(x[:,1]),np.max(x[:,1]),200)
-#
-# xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
-# xGrid = np.reshape(xGrid, (xGrid.size,1))
-# yGrid = np.reshape(yGrid, (yGrid.size,1))
-# deciBoundX = np.column_stack((xGrid,yGrid))
-#
-# dataLen = deciBoundX.shape[0]
-#
-# bRandInd = np.random.permutation(dataLen)
-# deciBoundX = deciBoundX[bRandInd,:]
-#
-# classPr = np.zeros(dataLen)
-# batchNum = int(dataLen/(batchSize*2))
-# for i in range(batchNum):
-#     batchInd = (i*batchSize*2) + np.arange(batchSize*2)
-#     temp = deciBoundX[batchInd, :]
-#     classPr[batchInd] = predictLRBC(GaussKerFeature(temp, l), a)
-#
-# plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=0.2,c='g',label='Class 1 Boundary')
-# plt.scatter(deciBoundX[(classPr == 0), 0], deciBoundX[(classPr == 0), 1], s=0.2, c='y', label='Class 0 Boundary')
-#
-# plt.xlabel('Dimension 0',fontsize=10)
-# plt.ylabel('Dimension 1',fontsize=10)
-#
+
+# Decision boundary for LR
+ax3=plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
+
+xRange = np.linspace(np.min(xTrain[:,0]),np.max(xTrain[:,0]),200)
+yRange = np.linspace(np.min(xTrain[:,1]),np.max(xTrain[:,1]),200)
+
+xGrid, yGrid = np.meshgrid(xRange, yRange, sparse=False, indexing='xy')
+xGrid = np.reshape(xGrid, (xGrid.size,1))
+yGrid = np.reshape(yGrid, (yGrid.size,1))
+deciBoundX = np.column_stack((xGrid,yGrid))
+
+dataLen = deciBoundX.shape[0]
+
+bRandInd = np.random.permutation(dataLen)
+deciBoundX = deciBoundX[bRandInd,:]
+
+classPr = np.zeros(dataLen)
+batchNum = int(dataLen/(batchSize*2))
+for i in range(batchNum):
+    batchInd = (i*batchSize*2) + np.arange(batchSize*2)
+    temp = deciBoundX[batchInd, :]
+    classPr[batchInd] = predictLRBC(GaussKerFeature(temp, l), a)
+
+plt.scatter(deciBoundX[(classPr == 1),0],deciBoundX[(classPr == 1),1],s=0.2,c='g',label='Class 1 Boundary')
+plt.scatter(deciBoundX[(classPr == 0), 0], deciBoundX[(classPr == 0), 1], s=0.2, c='y', label='Class 0 Boundary')
+
 # plt.scatter(x[default_data_num:,0],x[default_data_num:,1],s=5,c='r',label='Class 1')
 # plt.scatter(x[:default_data_num,0],x[:default_data_num,1],s=5,label='Class 0')
-#
-# plt_ax = plt.gca()
-# plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
-# plt_ax.set_aspect('equal', 'box')
-# plt.subplots_adjust(left=0.05, right=0.98, top=0.9, bottom=0.1)
-# plt.show()
+
+plt.scatter(xTrain[class0Ind,0],xTrain[class0Ind,1],s=5,label='Class 0')
+plt.scatter(xTrain[class1Ind,0],xTrain[class1Ind,1],s=5,c='r',label='Class 1')
+plt.title('Gaussian kernel LR Classifier',fontsize=12)
+plt.xlabel('Dimension 0',fontsize=10)
+plt.ylabel('Dimension 1',fontsize=10)
+
+plt_ax = plt.gca()
+plt_ax.legend(loc='upper left',bbox_to_anchor=(0.4, 1.3))
+plt_ax.set_aspect('equal', 'box')
+
+plt.subplots_adjust(left=0.05, right=0.98, top=0.9, bottom=0.1)
+plt.show()
