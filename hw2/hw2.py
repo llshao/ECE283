@@ -11,14 +11,16 @@ import tensorflow as tf
 # Configurations
 dimen = 2 # data dimension
 
-learnRate = 0.05
+learnRate = 0.005
 stepNum = 10
+
+suffleNum = 5
 
 # Network parameters
 numHL1 = 64 # number of neurons in hidden layer 1
-numHL2 = 128 # number of neurons in hidden layer 1
+numHL2 = 64 # number of neurons in hidden layer 2
 
-l2Factor = 0.01 # significance of L2 regularization
+l2Factor = 1 # significance of L2 regularization
 
 inputDim = dimen # input data dimension
 numClass = 2 # number of classes
@@ -30,6 +32,7 @@ X = tf.placeholder(tf.float32, [None, inputDim])
 Y = tf.placeholder(tf.float32, [None, numClass])
 
 # Store layers weight and bias
+# tf.Variable will be updated
 weights = {
     'h1': tf.Variable(tf.random_normal([inputDim, numHL1])),
     'h2': tf.Variable(tf.random_normal([numHL1, numHL2])),
@@ -61,11 +64,17 @@ prediction = tf.nn.softmax(logits)
 
 # Define loss and optimizer
 # lossOp = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=Y))
-lossOp = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=Y))
+# lossOp = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=Y))
+lossOp = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=Y))
+
+# # tf.losses.sigmoid_cross_entropy
+# L_BCS(y\hat,y) = -(ylogy\hat+(1-y)log(1-y\hat))
+# L_sigmoid_BCS(y\hat,y) = -(ylog\sigmoid(y\hat)+(1-y)log(1-\sigmoid(y\hat)))???
 
 # regularizer1 = tf.nn.l2_loss(weights['h1']) # L2 regularization on weight of hidden layer 1
 # regularizer2 = tf.nn.l2_loss(weights['h2']) # L2 regularization on weight of hidden layer 2
-# lossOp = tf.reduce_mean(lossOp + l2Factor*regularizer1 + l2Factor*regularizer2)
+# lossOp += tf.reduce_mean(l2Factor*regularizer1 + l2Factor*regularizer2)
+
 optimizer = tf.train.AdamOptimizer(learning_rate=learnRate)
 trainOp = optimizer.minimize(lossOp)
 
@@ -165,39 +174,44 @@ batchSize = int(np.floor(trainLen/stepNum))
 with tf.Session() as sess:
     sess.run(init)
 
-    for step in range(stepNum):
-        currInd = range(step * batchSize, (step+1) * batchSize)
-        batch_x = xTrain[currInd, :]
-        batch_y = tTrain[currInd]
-        batch_y = np.column_stack((1-batch_y,batch_y)) # one-hot encoding
-        # Run optimization op (backprop)
-        sess.run(trainOp, feed_dict={X: batch_x, Y: batch_y})
+    for s_i in range(suffleNum):
+        print("Suffle ",s_i)
+        randInd = np.random.permutation(trainLen)
+        xTrain = xTrain[randInd, :]
+        tTrain = tTrain[randInd]
+        for step in range(stepNum):
+            currInd = range(step * batchSize, (step+1) * batchSize)
+            batch_x = xTrain[currInd, :]
+            batch_y = tTrain[currInd]
+            batch_y = np.column_stack((1-batch_y,batch_y)) # one-hot encoding
+            # Run optimization op (backprop)
+            sess.run(trainOp, feed_dict={X: batch_x, Y: batch_y})
 
-        # Calculate batch loss and accuracy
-        loss, acc = sess.run([lossOp, accuracy], feed_dict={X: batch_x, Y: batch_y})
+            # Calculate batch loss and accuracy
+            loss, acc = sess.run([lossOp, accuracy], feed_dict={X: batch_x, Y: batch_y})
 
-        print("Step {0:3d}: Minibatch loss = {1:5.4f} , Training accuracy = {2:4.3f}".format(step,loss,acc))
+            print("Step {0:3d}: Minibatch loss = {1:5.4f} , Training accuracy = {2:4.3f}".format(step,loss,acc))
 
-    print("Optimization finished!")
+        print("Optimization finished!")
 
-    # Calculate accuracy for test data
-    testY = np.column_stack((1 - tTest, tTest))  # one-hot encoding
-    print("Test accuracy = {:4.3f}".format(sess.run(accuracy, feed_dict={X: xTest, Y: testY})))
+        # Calculate accuracy for test data
+        testY = np.column_stack((1 - tTest, tTest))  # one-hot encoding
+        print("Test accuracy = {:4.3f}".format(sess.run(accuracy, feed_dict={X: xTest, Y: testY})))
 
 #-----------------------------------------------------------------------------------------------------------------------
-# Visualize data
-plt.figure()
-plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
-plt.scatter(xTrain[(tTrain==0),0],xTrain[(tTrain==0),1],s=5,label='Train (Class 0)')
-plt.scatter(xTrain[(tTrain==1),0],xTrain[(tTrain==1),1],s=5,c='r',label='Train (Class 1)')
-plt.scatter(xTest[(tTest==0),0],xTest[(tTest==0),1],s=5,c='g',label='Test (Class 0)')
-plt.scatter(xTest[(tTest==1),0],xTest[(tTest==1),1],s=5,c='c',label='Test (Class 1)')
-plt.scatter(xValid[(tValid==0),0],xValid[(tValid==0),1],s=5,c='k',label='Valid (Class 0)')
-plt.scatter(xValid[(tValid==1),0],xValid[(tValid==1),1],s=5,c='m',label='Valid (Class 1)')
-plt.title('Data visulization',fontsize=12)
-plt.xlabel('Dimension 0',fontsize=10)
-plt.ylabel('Dimension 1',fontsize=10)
-plt_ax = plt.gca()
-plt_ax.set_aspect('equal', 'box')
-plt_ax.legend(loc='upper left',bbox_to_anchor=(0.1, 1.0))
-plt.show()
+# # Visualize data
+# plt.figure()
+# plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
+# plt.scatter(xTrain[(tTrain==0),0],xTrain[(tTrain==0),1],s=5,label='Train (Class 0)')
+# plt.scatter(xTrain[(tTrain==1),0],xTrain[(tTrain==1),1],s=5,c='r',label='Train (Class 1)')
+# plt.scatter(xTest[(tTest==0),0],xTest[(tTest==0),1],s=5,c='g',label='Test (Class 0)')
+# plt.scatter(xTest[(tTest==1),0],xTest[(tTest==1),1],s=5,c='c',label='Test (Class 1)')
+# plt.scatter(xValid[(tValid==0),0],xValid[(tValid==0),1],s=5,c='k',label='Valid (Class 0)')
+# plt.scatter(xValid[(tValid==1),0],xValid[(tValid==1),1],s=5,c='m',label='Valid (Class 1)')
+# plt.title('Data visulization',fontsize=12)
+# plt.xlabel('Dimension 0',fontsize=10)
+# plt.ylabel('Dimension 1',fontsize=10)
+# plt_ax = plt.gca()
+# plt_ax.set_aspect('equal', 'box')
+# plt_ax.legend(loc='upper left',bbox_to_anchor=(0.1, 1.0))
+# plt.show()
