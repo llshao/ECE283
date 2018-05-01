@@ -1,6 +1,6 @@
 *.pdf
 .idea/
-*.m
+hw1/temp/
 *.asv
 *.mat
 *.png
