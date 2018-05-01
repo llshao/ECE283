@@ -66,7 +66,7 @@ yticklabels(numHL2Range)
 ylabel('Size of hidden layer 2')
 zlim(100*[min(NoL2Score.Testaccuracy),max(NoL2Score.Testaccuracy)+0.01])
 caxis(100*[min(NoL2Score.Testaccuracy),max(NoL2Score.Testaccuracy)])
-zlabel('Test accuracy (%)')
+zlabel('Validation accuracy (%)')
 
 [~,ind] = max(NoL2Score.Testaccuracy);
 optiConfig = NoL2Score(ind,:);
@@ -82,4 +82,41 @@ text(log2(optiConfig.numHL1)-3,log2(optiConfig.numHL2)-3,...
 hold off
 set(gca,'FontSize',18)
 view([73,55])
-title('Tuning hyperparameters (without L2-regularization)')
+title('Tuning hidden layer size (without L2-regularization)')
+
+%% Hidden layer 1 and 2 both with size of 64
+HL64ind=((validScore2L.numHL1 == 64)&(validScore2L.numHL2 == 64));
+HL64Score = validScore2L(HL64ind,:);
+
+figure('Position',[40,80,1200,800])
+bh = bar3(100*reshape(HL64Score.Testaccuracy,[5,5]));
+for k = 1:length(bh)
+    zdata = bh(k).ZData;
+    bh(k).CData = zdata;
+    bh(k).FaceColor = 'interp';
+end
+xticklabels(l2Factor1Range)
+xlabel('Hidden layer 1 L2-reg. ratio')
+yticklabels(l2Factor1Range)
+ylabel('Hidden layer 2 L2-reg. ratio')
+zlim(100*[min(HL64Score.Testaccuracy),max(HL64Score.Testaccuracy)+0.01])
+caxis(100*[min(HL64Score.Testaccuracy),max(HL64Score.Testaccuracy)])
+zlabel('Validation accuracy (%)')
+
+[~,ind] = max(HL64Score.Testaccuracy);
+optiConfig = HL64Score(ind,:);
+xInd = find(l2Factor1Range == optiConfig.l2FactorHL1);
+yInd = find(l2Factor2Range == optiConfig.l2FactorHL2);
+disp('Optimal L2-regularization configuration:')
+disp(optiConfig);
+hold on
+scatter3(xInd,yInd,...
+    100*optiConfig.Testaccuracy+0.5,128,'r','filled')
+text(xInd,yInd,...
+    100*optiConfig.Testaccuracy+4,...
+    sprintf('Highest accuracy = %.1f%%',100*optiConfig.Testaccuracy),...
+    'FontSize',18)
+hold off
+set(gca,'FontSize',18)
+view([57,67])
+title('Tuning L2-regularization ratio (Size of both hidden layers = 64)')

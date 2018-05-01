@@ -104,19 +104,18 @@ tTrain = tTrain[randInd]
 batchSize = int(np.floor(trainLen/stepNum))
 
 #-----------------------------------------------------------------------------------------------------------------------
-# Tuning network hyper-parameters: learnRate, numHL1, numHL2
-learnRateRange = [0.1,0.01]
-# learnRateRange = [0.1]
-numHLRange = [16, 32, 64, 128, 256, 512]
-# numHLRange = [64, 128]
-l2FactorRange = [0, 0.5, 1.0, 2.0, 4.0] # significance of L2 regularization
-# l2FactorRange = [0.5, 1.0]
+# Tuning network hyper-parameters: learnRate, numHL1, numHL2, l2FactorHL1, l2FactorHL2
+# learnRateRange = [0.1,0.01]
+learnRateRange = [0.1]
+# numHLRange = [16, 32, 64, 128, 256, 512]
+numHLRange = [64]
+# l2FactorRange = [0, 0.5, 1.0, 2.0, 4.0] # significance of L2 regularization
+l2FactorRange = [1.0]
 
 learnRateLen = len(learnRateRange)
 numHLLen= len(numHLRange)
 l2FactorLen= len(l2FactorRange)
 
-# validScore1L = np.zeros((learnRateLen,numHLLen,l2FactorLen)) # 1 Hiddle Layer
 validScore2L = np.zeros((learnRateLen,numHLLen,numHLLen,l2FactorLen,l2FactorLen)) # 2 Hiddle Layer
 
 for i in range(learnRateLen): # learning rate
@@ -132,7 +131,8 @@ for i in range(learnRateLen): # learning rate
                 l2FactorHL1 = l2FactorRange[m]
 
                 for n in range(l2FactorLen):  # l2 regularization weight
-                    l2FactorHL2 = l2FactorRange[n]
+                    # l2FactorHL2 = l2FactorRange[n]
+                    l2FactorHL2 = 0
 
                     # TensorFlow initialization
                     X = tf.placeholder(tf.float32, [None, inputDim])
@@ -154,7 +154,6 @@ for i in range(learnRateLen): # learning rate
 
                     # Create neural network model
                     # 1) implement a fully connected neural network
-                    # (a) 1 hidden layer
                     # (b) 2 hidden layer
                     def neural_net_2layer(x):
                         layer1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
@@ -207,6 +206,11 @@ for i in range(learnRateLen): # learning rate
 
                                 # Calculate batch loss and accuracy
                                 loss, acc = sess.run([lossOp, accuracy], feed_dict={X: batch_x, Y: batch_y})
+                                validY = np.column_stack((1 - tValid, tValid))  # one-hot encoding
+                                accV = sess.run(accuracy, feed_dict={X: xValid, Y: validY})
+                                print("Step {0:3d}: Minibatch loss = {1:5.4f} , Training accuracy = {2:4.3f}, Validation accuracy = {3:4.3f}".
+                                      format(step,loss,acc,accV))
+
 
                         # Calculate accuracy for validation data
                         validY = np.column_stack((1 - tValid, tValid))  # one-hot encoding
@@ -215,11 +219,11 @@ for i in range(learnRateLen): # learning rate
                               format(learnRate,numHL1,numHL2,l2FactorHL1,l2FactorHL2,validScore2L[i, j, k, m, n]))
 
 ind = np.unravel_index(np.argmax(validScore2L, axis=None), validScore2L.shape)
-print("Optimized configuration: learnRate = {0:5.4f}, numHL1 = {1:5d}, numHL2 = {2:5d}, l2FactorHL1 = {3:2.1f}, l2FactorHL2 = {4:2.1f}, Accuracy = {5:4.3f}".
+print("Optimized configuration: learnRate = {0:5.4f}, numHL1 = {1:5d}, numHL2 = {2:5d}, l2FactorHL1 = {3:2.1f}, l2FactorHL2? = {4:2.1f}, Accuracy = {5:4.3f}".
       format(learnRateRange[ind[0]],numHLRange[ind[1]],numHLRange[ind[2]], l2FactorRange[ind[3]], l2FactorRange[ind[4]],validScore2L[ind]))
-
-sio.savemat('NNHyperParameters',dict([('validScore2L', validScore2L)]))
-
+#
+# sio.savemat('NNHyperParameters',dict([('validScore2L', validScore2L)]))
+#
 
 #-----------------------------------------------------------------------------------------------------------------------
 # Final test score
@@ -231,7 +235,8 @@ numHL2 = numHLRange[ind[2]]
 # l2 regularization weight
 l2FactorHL1 = l2FactorRange[ind[3]]
 # l2 regularization weight
-l2FactorHL2 = l2FactorRange[ind[4]]
+# l2FactorHL2 = l2FactorRange[ind[4]]
+l2FactorHL2 = 0
 
 # TensorFlow initialization
 X = tf.placeholder(tf.float32, [None, inputDim])
@@ -253,7 +258,6 @@ biases = {
 
 # Create neural network model
 # 1) implement a fully connected neural network
-# (a) 1 hidden layer
 # (b) 2 hidden layer
 def neural_net_2layer(x):
     layer1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
@@ -314,8 +318,8 @@ with tf.Session() as sess:
     testY = np.column_stack((1 - tTest, tTest))  # one-hot encoding
     testAccuracy = sess.run(accuracy, feed_dict={X: xTest, Y: testY})
     print("Final test accuracy = {:4.3f}".format(testAccuracy))
-
-    # saver.save(sess, './Test_model_HL2')
+#
+#     # saver.save(sess, './Test_model_HL2')
 
 #-----------------------------------------------------------------------------------------------------------------------
 # # Visualize data

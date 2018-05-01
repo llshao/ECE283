@@ -104,8 +104,12 @@ tTrain = tTrain[randInd]
 batchSize = int(np.floor(trainLen/stepNum))
 
 #-----------------------------------------------------------------------------------------------------------------------
+#################################################################
+################ 1 hidden layer neural network ##################
+#################################################################
 # Tuning network hyper-parameters: learnRate, numHL1, l2FactorHL1
-learnRateRange = [0.1,0.01]
+# learnRateRange = [0.1,0.01]
+learnRateRange = [0.1]
 numHLRange = [16, 32, 64, 128, 256, 512]
 l2FactorRange = [0, 0.5, 1.0, 2.0, 4.0] # significance of L2 regularization
 
@@ -143,7 +147,6 @@ for i in range(learnRateLen): # learning rate
             # Create neural network model
             # 1) implement a fully connected neural network
             # (a) 1 hidden layer
-            # (b) 2 hidden layer
             def neural_net_1layer(x):
                 layer1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
                 layer1 = tf.nn.relu(layer1)
@@ -196,7 +199,7 @@ for i in range(learnRateLen): # learning rate
                 validScore1L[i, j, m] = sess.run(accuracy, feed_dict={X: xValid, Y: validY})
                 print("learnRate = {:5.4f}, numHL1 = {:3d}, l2FactorHL1 = {:2.1f}, Test accuracy = {:4.3f}".
                       format(learnRate,numHL1,l2FactorHL1,validScore1L[i, j, m]))
-        sio.savemat('NNHyperParameters', dict([('validScore1L', validScore1L)]))
+        # sio.savemat('NNHyperParameters', dict([('validScore1L', validScore1L)]))
 
 ind = np.unravel_index(np.argmax(validScore1L, axis=None), validScore1L.shape)
 print("Optimized configuration: learnRate = {:5.4f}, numHL1 = {:5d}, l2FactorHL1 = {:2.1f}, Accuracy = {:4.3f}".
@@ -292,19 +295,19 @@ with tf.Session() as sess:
     # saver.save(sess, './Test_model_HL2')
 
 #-----------------------------------------------------------------------------------------------------------------------
-# # Visualize data
-# plt.figure()
-# plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
-# plt.scatter(xTrain[(tTrain==0),0],xTrain[(tTrain==0),1],s=5,label='Train (Class 0)')
-# plt.scatter(xTrain[(tTrain==1),0],xTrain[(tTrain==1),1],s=5,c='r',label='Train (Class 1)')
-# plt.scatter(xTest[(tTest==0),0],xTest[(tTest==0),1],s=5,c='g',label='Test (Class 0)')
-# plt.scatter(xTest[(tTest==1),0],xTest[(tTest==1),1],s=5,c='c',label='Test (Class 1)')
-# plt.scatter(xValid[(tValid==0),0],xValid[(tValid==0),1],s=5,c='k',label='Valid (Class 0)')
-# plt.scatter(xValid[(tValid==1),0],xValid[(tValid==1),1],s=5,c='m',label='Valid (Class 1)')
-# plt.title('Data visulization',fontsize=12)
-# plt.xlabel('Dimension 0',fontsize=10)
-# plt.ylabel('Dimension 1',fontsize=10)
-# plt_ax = plt.gca()
-# plt_ax.set_aspect('equal', 'box')
-# plt_ax.legend(loc='upper left',bbox_to_anchor=(0.1, 1.0))
-# plt.show()
+# Visualize data
+plt.figure()
+plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
+plt.scatter(xTrain[(tTrain==0),0],xTrain[(tTrain==0),1],s=5,label='Train (Class 0)')
+plt.scatter(xTrain[(tTrain==1),0],xTrain[(tTrain==1),1],s=5,c='r',label='Train (Class 1)')
+plt.scatter(xTest[(tTest==0),0],xTest[(tTest==0),1],s=5,c='g',label='Test (Class 0)')
+plt.scatter(xTest[(tTest==1),0],xTest[(tTest==1),1],s=5,c='c',label='Test (Class 1)')
+plt.scatter(xValid[(tValid==0),0],xValid[(tValid==0),1],s=5,c='k',label='Valid (Class 0)')
+plt.scatter(xValid[(tValid==1),0],xValid[(tValid==1),1],s=5,c='m',label='Valid (Class 1)')
+plt.title('Data visulization',fontsize=12)
+plt.xlabel('Dimension 0',fontsize=10)
+plt.ylabel('Dimension 1',fontsize=10)
+plt_ax = plt.gca()
+plt_ax.set_aspect('equal', 'box')
+plt_ax.legend(loc='upper left',bbox_to_anchor=(0.1, 1.0))
+plt.show()

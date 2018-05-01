@@ -11,7 +11,7 @@ import tensorflow as tf
 # Configurations
 dimen = 2 # data dimension
 
-learnRate = 0.005
+learnRate = 0.1
 stepNum = 10
 
 suffleNum = 5
@@ -71,9 +71,10 @@ lossOp = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, la
 # L_BCS(y\hat,y) = -(ylogy\hat+(1-y)log(1-y\hat))
 # L_sigmoid_BCS(y\hat,y) = -(ylog\sigmoid(y\hat)+(1-y)log(1-\sigmoid(y\hat)))???
 
-# regularizer1 = tf.nn.l2_loss(weights['h1']) # L2 regularization on weight of hidden layer 1
+regularizer1 = tf.nn.l2_loss(weights['h1']) # L2 regularization on weight of hidden layer 1
 # regularizer2 = tf.nn.l2_loss(weights['h2']) # L2 regularization on weight of hidden layer 2
 # lossOp += tf.reduce_mean(l2Factor*regularizer1 + l2Factor*regularizer2)
+lossOp += tf.reduce_mean(l2Factor*regularizer1)
 
 optimizer = tf.train.AdamOptimizer(learning_rate=learnRate)
 trainOp = optimizer.minimize(lossOp)
