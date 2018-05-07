@@ -2,11 +2,14 @@
 # Created on 05/06/2018
 # Author: Yitian Shao
 #-----------------------------------------------------------------------------------------------------------------------
+import contextlib
 import numpy as np
 import numpy.matlib as matlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.patches import Ellipse
 from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
 
 #-----------------------------------------------------------------------------------------------------------------------
 # Configurations
@@ -30,6 +33,28 @@ np.random.seed(0)
 
 #-----------------------------------------------------------------------------------------------------------------------
 # Functions
+@contextlib.contextmanager
+def printoptions(*args, **kwargs):
+    original = np.get_printoptions()
+    np.set_printoptions(*args, **kwargs)
+    try:
+        yield
+    finally:
+        np.set_printoptions(**original)
+
+
+def draw_ellipse(position, covariance, ax=None, **kwargs):
+    ax = ax or plt.gca()
+    if covariance.shape == (2, 2):
+        U, s, Vt = np.linalg.svd(covariance)
+        angle = np.degrees(np.arctan2(U[1, 0], U[0, 0]))
+        width, height = 2 * np.sqrt(s)
+    else:
+        angle = 0
+        width, height = 2 * np.sqrt(covariance)
+    for nsig in range(1, 4):
+        ax.add_patch(Ellipse(position, nsig * width, nsig * height, angle, **kwargs))
+
 def gaussianFromEigen(mean_v, lamb, eig_vectors, data_num):
     dimen = eig_vectors.shape[0]
     Cov = matlib.zeros((dimen, dimen))
@@ -89,34 +114,94 @@ ind2 = (mixGaussInd==2)
 x0Len = np.sum(ind0)
 x1Len = np.sum(ind1)
 x2Len = np.sum(ind2)
+prob_z = np.array([x0Len, x1Len, x2Len]).reshape((3,1))/data_num # P(z)
 print("Ratio of gaussian mixture components = {:d}:{:d}:{:d}".format(x0Len,x1Len,x2Len))
+print("P(z[0]=1) = {:.3f}, P(z[1]=1) = {:.3f}, P(z[2]=1) = {:.3f}".format(prob_z[0,0],prob_z[1,0],prob_z[2,0]))
 
 x2D = np.concatenate((x0[ind0,:], x1[ind1,:], x2[ind2,:]),axis=0)
 temp = np.concatenate((np.zeros(x0Len),np.ones(x1Len),2*np.ones(x2Len)))
 z2D = np.column_stack((temp==0,temp==1,temp==2)) # One-hot encoding (.astype(int))
 
-# disp2DResult(x2D, z2D)
+plt.figure()
+plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
+disp2DResult(x2D, z2D,0)
+w_factor = 0.1
+draw_ellipse(m0, C0, alpha=pi0 * w_factor, color='k')
+draw_ellipse(m1, C1, alpha=pi1 * w_factor, color='k')
+draw_ellipse(m2, C2, alpha=pi2 * w_factor, color='k')
+
 #-----------------------------------------------------------------------------------------------------------------------
-# K-means algorithm
+# 1) K-means algorithm
 plt.figure()
 plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
 gs = gridspec.GridSpec(2, 2)
 gs.update(wspace=0.05, hspace=0.3)
+
+print("------------------------- K-means algorithm -------------------------")
+clust_center = []
 for k in range(2,6):
     kmean_h = KMeans(n_clusters=k, init='random', n_init=10, random_state=0).fit(x2D)
-    clust_center = kmean_h.cluster_centers_
-    curr_clust = (kmean_h.labels_ == 0)
-    for c_i in range(1,k):
-        curr_clust = np.column_stack((curr_clust, kmean_h.labels_ == c_i))
+    clust_center.append(kmean_h.cluster_centers_)
+
+    prob_az = np.zeros((3,k)) # P(a,z)
+    for c_i in range(k):
+        ind = (kmean_h.labels_ == c_i)
+        if c_i == 0:
+            curr_clust = ind
+        else:
+            curr_clust = np.column_stack((curr_clust, ind))
+
+        for a_i in range(3):
+            prob_az[a_i,c_i] = np.sum(np.logical_and(z2D[:,a_i],ind))/data_num
+    # print(prob_az)
+    emp_prob = prob_az/prob_z # # empirical probabilities P(a|z) = P(a,z)/P(z)
+    with printoptions(precision=3, suppress=True):
+        print(emp_prob)
 
     plt.subplot(gs[k-2])
     disp2DResult(x2D, curr_clust,0)
     plt.title("{:d} Clusters".format(k))
-    plt.plot(clust_center[:,0],clust_center[:,1],'kx')
-plt.show()
+    plt.plot(clust_center[k-2][:,0],clust_center[k-2][:,1],'kx')
+# plt.show()
 
 #-----------------------------------------------------------------------------------------------------------------------
+# 2) Estimate the mean and covariance for a Gaussian mixture model
+plt.figure()
+plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
+gs = gridspec.GridSpec(2, 2)
+gs.update(wspace=0.05, hspace=0.3)
 
+print("------------------------- Gaussian mixture model -------------------------")
+gauss_mean = []
+for k in range(2,6):
+    gmm_h = GaussianMixture(n_components=k).fit(x2D)
+    gauss_mean.append(gmm_h.means_)
+    labels = gmm_h.predict(x2D)
+
+    prob_az = np.zeros((3, k))  # P(a,z)
+    for c_i in range(k):
+        ind = (labels == c_i)
+        if c_i == 0:
+            curr_clust = ind
+        else:
+            curr_clust = np.column_stack((curr_clust, ind))
+
+        for a_i in range(3):
+            prob_az[a_i, c_i] = np.sum(np.logical_and(z2D[:, a_i], ind)) / data_num
+    # print(prob_az)
+    emp_prob = prob_az / prob_z  # # empirical probabilities P(a|z) = P(a,z)/P(z)
+    with printoptions(precision=3, suppress=True):
+        print(emp_prob)
+
+    plt.subplot(gs[k-2])
+    disp2DResult(x2D, curr_clust,0)
+    plt.title("{:d} Components".format(k))
+    plt.plot(gauss_mean[k-2][:,0],gauss_mean[k-2][:,1],'kx')
+
+    w_factor = 0.05 / gmm_h.weights_.max()
+    for pos, covar, w in zip(gmm_h.means_, gmm_h.covariances_, gmm_h.weights_):
+        draw_ellipse(pos, covar, alpha=w * w_factor, color='k')
+plt.show()
 
 #-----------------------------------------------------------------------------------------------------------------------
 print('End')
