@@ -60,7 +60,7 @@ def getEmpProbTable(comp_num, k, true_label, pred_label, margin_prob):
             joint_prob[a_i,c_i] = np.mean(np.logical_and(true_label[:,a_i],ind))
     emp_prob = joint_prob/margin_prob # # empirical probabilities P(a|z) = P(a,z)/P(z)
     with printoptions(precision=3, suppress=True):
-        print(emp_prob)
+        print("Empirical probability table:\n",emp_prob)
     return curr_clust
 
 # Visualize data
@@ -142,6 +142,7 @@ gs.update(wspace=0.05, hspace=0.3)
 print("------------------------- K-means algorithm -------------------------")
 clust_center = []
 for k in range(2,6):
+    print("k = ",k)
     kmean_h = KMeans(n_clusters=k, init='random', n_init=10, random_state=0).fit(x2D)
     clust_center.append(kmean_h.cluster_centers_)
 
@@ -162,6 +163,7 @@ gs.update(wspace=0.05, hspace=0.3)
 print("------------------------- Gaussian mixture model -------------------------")
 gauss_mean = []
 for k in range(2,6):
+    print("k = ", k)
     gmm_h = GaussianMixture(n_components=k).fit(x2D)
     gauss_mean.append(gmm_h.means_)
     labels = gmm_h.predict(x2D)
@@ -204,7 +206,7 @@ while not_ortho:
         iter_i += 1
         drop_ind = np.argmax(corr_score)
         vect_pool[drop_ind,:] = np.random.choice([0,1,-1], d, p=[Pu0, Pu1, Pu2])
-print(vect_pool.T)
+print("[u1,...,u7] = \n",vect_pool.T)
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 5-6) Generate 30-dimensional data samples for a Gaussian mixture distribution with 3 equiprobable components and run
@@ -222,17 +224,19 @@ Comp2 = 2*vect_pool[3,:] + (2**0.5)*np.outer(Z1,vect_pool[4,:]) + np.outer(Z2,ve
 Comp3 = (2**0.5)*vect_pool[5,:] + np.outer(Z1,(vect_pool[0,:]+vect_pool[1,:])) + \
         0.5*(2**0.5)*np.outer(Z2,vect_pool[4,:]) + N
 
+# (E[X])
 Comp_mean = np.zeros((3,d))
 Comp_mean[0,:] = vect_pool[0,:]
 Comp_mean[1,:] = 2*vect_pool[3,:]
 Comp_mean[2,:] = (2**0.5)*vect_pool[5,:]
-print("Component mean (transposed): \n", Comp_mean.T)
 
-Comp_eig_vect = np.zeros((3,d))
-Comp_eig_vect[0,:] = vect_pool[1,:] + vect_pool[2,:] + sigma*np.ones(d)
-Comp_eig_vect[1,:] = (2**0.5)*vect_pool[4,:] + vect_pool[5,:] + sigma*np.ones(d)
-Comp_eig_vect[2,:] = vect_pool[0,:]+vect_pool[1,:] + 0.5*(2**0.5)*vect_pool[4,:] + sigma*np.ones(d)
-print("Component covariance matrix eigenvector (transposed): \n", Comp_eig_vect.T)
+# (Var(X) = E[X^2] - E[X]^2 => Var(X1+X2) = Var(X1) + Var(X2) if X1 and X2 are independent)
+Comp_var = np.zeros((3,d))
+Comp_var[0,:] = np.square(vect_pool[1,:]) + np.square(vect_pool[2,:]) + (sigma**2)*np.ones(d)
+Comp_var[1,:] = 2*np.square(vect_pool[4,:]) + np.square(vect_pool[5,:]) + (sigma**2)*np.ones(d)
+Comp_var[2,:] = np.square(vect_pool[0,:]+vect_pool[1,:]) + 0.5*np.square(vect_pool[4,:]) + (sigma**2)*np.ones(d)
+# Comp_eig_vect = np.sqrt(Comp_var)
+# print("Component covariance matrix eigenvector (transposed): \n", Comp_eig_vect.T)
 
 mixGaussInd = np.random.choice(3,data_num)
 ind0 = (mixGaussInd==0)
@@ -251,6 +255,7 @@ z30D = np.column_stack((temp==0,temp==1,temp==2)) # One-hot encoding (.astype(in
 print("------------------------- K-means of data 30D -------------------------")
 clust_center = []
 for k in range(2,6):
+    print("k = ",k)
     kmean_h = KMeans(n_clusters=k, init='random', n_init=10, random_state=0).fit(x30D)
     clust_center.append(kmean_h.cluster_centers_)
 
@@ -262,26 +267,31 @@ for i in range(4):
     clust_vect_corr = (Comp_mean/nla.norm(Comp_mean,axis=1).reshape((Comp_mean.shape[0],1))) \
         .dot((clust_center[i]/nla.norm(clust_center[i],axis=1).reshape((clust_center[i].shape[0],1))).T)
     with printoptions(precision=1, suppress=True):
-        print("Correlation between cluster mean and data model mean: \n",clust_vect_corr)
+        print("k={:2d}: Correlation between cluster mean and data model mean:\n".format(i+2),clust_vect_corr)
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 8) Run EM algorithm with several different values of K.
 print("------------------------- Gaussian mixture of data 30D -------------------------")
-# for k in range(2,6):
-for k in range(3,4):
-    gmm_h = GaussianMixture(n_components=k).fit(x30D)
+for k in range(3,6):
+    print("k = ",k)
+    gmm_h = GaussianMixture(n_components=k, covariance_type='diag').fit(x30D)
     labels = gmm_h.predict(x30D)
     getEmpProbTable(3, k, z30D, labels, prob_z)
-    gauss_mean = gmm_h.means_
-    gauss_cov = gmm_h.covariances_
 
-    for e_i in range(k):
-        _, eig_vect = nla.eig(gauss_cov[e_i, :, :])
-        clust_vect_corr = (Comp_eig_vect / nla.norm(Comp_eig_vect, axis=1).reshape((Comp_eig_vect.shape[0], 1))) \
-            .dot(eig_vect / nla.norm(eig_vect, axis=0).reshape((1,eig_vect.shape[1])))
-        print("K = {:d}, GMM Comp {:d} compared with data model cov: ".format(k, e_i))
-        with printoptions(precision=1, suppress=True):
-            print(clust_vect_corr.T)
+    gauss_mean = gmm_h.means_
+    clust_vect_corr = (Comp_mean / nla.norm(Comp_mean, axis=1).reshape((Comp_mean.shape[0], 1))) \
+        .dot((gauss_mean / nla.norm(gauss_mean, axis=1).reshape((gauss_mean.shape[0], 1))).T)
+    with printoptions(precision=1, suppress=True):
+        print("Correlation between GMM component mean and data model mean:\n", clust_vect_corr)
+
+    gauss_cov = gmm_h.covariances_
+    clust_vect_corr = (Comp_var / nla.norm(Comp_var, axis=1).reshape((Comp_var.shape[0], 1))) \
+        .dot((gauss_cov / nla.norm(gauss_cov, axis=1).reshape((gauss_cov.shape[0], 1))).T)
+    with printoptions(precision=1, suppress=True):
+        print("Correlation between GMM component covariance and data model covariance:\n", clust_vect_corr)
+        print("Component covariance matrix (diagonal, transposed): \n", Comp_var.T)
+        print("GMM component covariance matrix (Most match, re-ordered, transposed): \n",
+              gauss_cov[np.argmax(clust_vect_corr, axis=1), :].T)
 
 #-----------------------------------------------------------------------------------------------------------------------
 print('End')
