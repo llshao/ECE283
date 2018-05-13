@@ -12,7 +12,7 @@ from matplotlib.patches import Ellipse
 
 #-----------------------------------------------------------------------------------------------------------------------
 # Configurations
-np.random.seed(0)
+np.random.seed(1)
 
 #-----------------------------------------------------------------------------------------------------------------------
 # General functions
@@ -229,13 +229,14 @@ x2D = np.concatenate((x0[ind0,:], x1[ind1,:], x2[ind2,:]),axis=0)
 temp = np.concatenate((np.zeros(x0Len),np.ones(x1Len),2*np.ones(x2Len)))
 z2D = np.column_stack((temp==0,temp==1,temp==2)) # One-hot encoding (.astype(int))
 
-# plt.figure()
-# plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
-# disp2DResult(x2D, z2D,0)
-# w_factor = 0.1
-# draw_ellipse(m0, C0, alpha=pi0 * w_factor, color='k')
-# draw_ellipse(m1, C1, alpha=pi1 * w_factor, color='k')
-# draw_ellipse(m2, C2, alpha=pi2 * w_factor, color='k')
+plt.figure()
+plt.get_current_fig_manager().window.wm_geometry("1400x760+20+20")
+disp2DResult(x2D, z2D,0)
+plt.legend(loc='upper left',bbox_to_anchor=(-0.3, 1.1))
+w_factor = 0.1
+draw_ellipse(m0, C0, alpha=pi0 * w_factor, color='k')
+draw_ellipse(m1, C1, alpha=pi1 * w_factor, color='k')
+draw_ellipse(m2, C2, alpha=pi2 * w_factor, color='k')
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 1) K-means algorithm
@@ -269,7 +270,7 @@ print("------------------------- Gaussian mixture model ------------------------
 gauss_mean = []
 for k in range(2,6):
     print("k = ", k)
-    gmm_h = GaussianMixture(n_components=k).fit(x2D)
+    gmm_h = GaussianMixture(n_components=k, n_init=10).fit(x2D)
     gauss_mean.append(gmm_h.means_)
     labels = gmm_h.predict(x2D)
 
@@ -283,7 +284,8 @@ for k in range(2,6):
     w_factor = 0.05 / gmm_h.weights_.max()
     for pos, covar, w in zip(gmm_h.means_, gmm_h.covariances_, gmm_h.weights_):
         draw_ellipse(pos, covar, alpha=w * w_factor, color='k')
-# plt.show()
+
+plt.show()
 
 #-----------------------------------------------------------------------------------------------------------------------
 # 4) Generate seven "quasi-orthogonal" random vectors in d dimensions
@@ -380,7 +382,7 @@ print("------------------------- Gaussian mixture of data 30D ------------------
 for k in range(3,6):
     print("k = ",k)
     # gmm_h = GaussianMixture(n_components=k, covariance_type='diag').fit(x30D)
-    gmm_h = GaussianMixture(n_components=k).fit(x30D)
+    gmm_h = GaussianMixture(n_components=k, n_init=10).fit(x30D)
     labels = gmm_h.predict(x30D)
     getEmpProbTable(3, k, z30D, labels, prob_z)
 
