@@ -86,6 +86,7 @@ def disp2DResult(data_in, one_hot, disp_now=1):
 
 #-----------------------------------------------------------------------------------------------------------------------
 # Class
+# Implementation of my K-means algorithm:
 class KMeans:
     def __init__(self, n_clusters, n_init=1, n_iter=100):
         self.clust_num = n_clusters
@@ -136,6 +137,7 @@ class KMeans:
         self.labels_ = all_label[slct_init_ind]
         return self
 
+# Implementation of my Gaussian mixture algorithm:
 class GaussianMixture(KMeans):
     def __init__(self,n_components, n_init=1, n_iter=100):
         super().__init__(n_components, n_init, n_iter)
@@ -274,7 +276,13 @@ for k in range(2,6):
     gauss_mean.append(gmm_h.means_)
     labels = gmm_h.predict(x2D)
 
-    curr_clust = getEmpProbTable(3, k, z2D, labels, prob_z)
+    # curr_clust = getEmpProbTable(3, k, z2D, labels, prob_z)
+    prob_kx = gmm_h.E_step(x2D)
+    condi_prob = np.zeros((3, k))
+    for a_i in range(3):
+        condi_prob[a_i,:] = np.mean(prob_kx[:,z2D[:,a_i]], axis=1)
+    with printoptions(precision=3, suppress=True):
+        print("Average values of p(k|i):\n", condi_prob)
 
     plt.subplot(gs[k-2])
     disp2DResult(x2D, curr_clust,0)
@@ -403,6 +411,3 @@ for k in range(3,6):
         print("Component covariance matrix (diagonal, transposed): \n", Comp_var.T)
         print("GMM component covariance matrix (Most match, re-ordered, transposed): \n",
               gauss_cov[np.argmax(clust_vect_corr, axis=1), :].T)
-
-#-----------------------------------------------------------------------------------------------------------------------
-pass
