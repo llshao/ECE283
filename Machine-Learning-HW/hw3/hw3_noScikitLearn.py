@@ -14,7 +14,7 @@ from matplotlib.patches import Ellipse
 # Configurations
 np.random.seed(1)
 
-#-----------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------
 # General functions
 @contextlib.contextmanager
 def printoptions(*args, **kwargs):
